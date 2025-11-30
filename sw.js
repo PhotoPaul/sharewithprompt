@@ -1,16 +1,37 @@
-import { set } from './idb-keyval.js';
-
-const CACHE_NAME = 'gemini-share-v1';
+const CACHE_NAME = 'gemini-share-v2';
 const ASSETS = [
     './',
     './index.html',
     './style.css',
     './app.js',
-    './idb-keyval.js',
     './manifest.json',
     './icon-192.png',
     './icon-512.png'
 ];
+
+// --- Inlined IDB Helper ---
+const dbName = 'gemini-share-store';
+const storeName = 'shared-files';
+
+function getDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1);
+        request.onerror = () => reject(request.error);
+        request.onupgradeneeded = () => request.result.createObjectStore(storeName);
+        request.onsuccess = () => resolve(request.result);
+    });
+}
+
+async function set(key, val) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore(storeName).put(val, key);
+    });
+}
+// --------------------------
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -26,8 +47,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Handle Share Target POST
-    if (event.request.method === 'POST' && url.pathname.endsWith('/share-target/')) {
+    // Intercept Share Target POST
+    // We match any path ending in _share-target to be safe
+    if (event.request.method === 'POST' && url.pathname.includes('_share-target')) {
         event.respondWith(
             (async () => {
                 try {
@@ -35,15 +57,15 @@ self.addEventListener('fetch', (event) => {
                     const imageFile = formData.get('image');
 
                     if (imageFile) {
-                        // Store the file in IndexedDB
                         await set('shared-image', imageFile);
-                        console.log('Image stored in IDB');
                     }
 
                     // Redirect to the app with a query param
+                    // Use 303 See Other to convert POST to GET
                     return Response.redirect('./?share=true', 303);
                 } catch (err) {
                     console.error('Share target error:', err);
+                    // Fallback: Redirect to home with error
                     return Response.redirect('./?error=share_failed', 303);
                 }
             })()
