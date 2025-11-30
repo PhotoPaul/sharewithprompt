@@ -8,14 +8,10 @@
   "description": "Share images to Gemini for text extraction and search.",
   "icons": [
     {
-      "src": "https://via.placeholder.com/192/bb86fc/000000?text=GS",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "https://via.placeholder.com/512/bb86fc/000000?text=GS",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
   "share_target": {
@@ -29,7 +25,14 @@
       "files": [
         {
           "name": "image",
-          "accept": ["image/*", ".png", ".jpg", ".jpeg", ".webp", ".gif"]
+          "accept": [
+            "image/*",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".gif"
+          ]
         }
       ]
     }
