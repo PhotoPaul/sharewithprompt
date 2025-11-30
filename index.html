@@ -15,8 +15,9 @@
     <div class="container">
         <header>
             <h1>Share to Gemini</h1>
-            <p class="subtitle">Extract CSV from screenshot</p>
+            <p class="subtitle">Extract text & search</p>
         </header>
+
         <main id="main-content">
             <!-- Settings Section -->
             <section id="settings-section" class="card">
@@ -26,39 +27,22 @@
                         <label for="apiKey">Gemini API Key</label>
                         <input type="password" id="apiKey" placeholder="Enter your Gemini API Key" required>
                     </div>
+
                     <div class="form-group">
                         <label for="gasUrl">Google Apps Script URL</label>
-                        <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/..." required>
-                        <small>Deploy the GAS code and paste the Web App URL here.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="customPrompt">Custom Prompt</label>
-                        <textarea id="customPrompt" rows="3"
-                            placeholder="extract as a csv all visible transactions in this screenshot. amounts use " ,"
-                            instead of "." so fix this."></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary">Save Settings</button>
-                </form>
-                <div id="save-status" class="status-msg hidden">Settings saved!</div>
-            </section>
-            <!-- Processing Section -->
-            <section id="processing-section" class="card hidden">
-                <div class="loader-container">
-                    <div class="spinner"></div>
-                    <p id="status-text">Processing shared image...</p>
-                </div>
-                <div id="error-log" class="error-box hidden"></div>
-                <button id="cancel-btn" class="btn-secondary hidden">Back</button>
-            </section>
-            <!-- Result Section -->
-            <section id="result-section" class="card hidden">
-                <h2>Extracted CSV</h2>
-                <p class="subtitle">Tap the text to copy</p>
-                <textarea id="result-text" rows="10" readonly placeholder="Result will appear here..."></textarea>
-                <button id="home-btn" class="btn-secondary">Back to Home</button>
-            </section>
+
+                        <!-- Loading/Processing Section (Hidden by default) -->
+                        <section id="processing-section" class="card hidden">
+                            <div class="loader-container">
+                                <div class="spinner"></div>
+                                <p id="status-text">Processing shared image...</p>
+                            </div>
+                            <div id="error-log" class="error-box hidden"></div>
+                            <button id="cancel-btn" class="btn-secondary hidden">Cancel / Home</button>
+                        </section>
         </main>
     </div>
+
     <script type="module" src="app.js"></script>
 </body>
 
