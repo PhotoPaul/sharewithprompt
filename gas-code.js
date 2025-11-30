@@ -45,7 +45,8 @@ function doPost(e) {
 }
 
 function callGemini(apiKey, imageBase64, mimeType, prompt) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Updated to use gemini-flash-latest as requested
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
     const payload = {
         contents: [

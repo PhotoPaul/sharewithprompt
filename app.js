@@ -45,112 +45,155 @@ function blobToBase64(blob) {
             // Remove "data:image/xxx;base64," prefix
             const base64String = reader.result.split(',')[1];
             resolve(base64String);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
+            import { get, del } from './idb-keyval.js';
 
-// Handle Shared Image
-async function handleShare() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has('share')) return;
+            // DOM Elements
+            const settingsSection = document.getElementById('settings-section');
+            const processingSection = document.getElementById('processing-section');
+            const settingsForm = document.getElementById('settings-form');
+            const apiKeyInput = document.getElementById('apiKey');
+            const gasUrlInput = document.getElementById('gasUrl');
+            const customPromptInput = document.getElementById('customPrompt');
+            const saveStatus = document.getElementById('save-status');
+            const statusText = document.getElementById('status-text');
+            const errorLog = document.getElementById('error-log');
+            const cancelBtn = document.getElementById('cancel-btn');
 
-    // Switch UI to processing mode
-    settingsSection.classList.add('hidden');
-    processingSection.classList.remove('hidden');
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('SW Registered'))
+                    .catch(err => console.error('SW Registration Failed', err));
+            }
 
-    try {
-        const imageBlob = await get('shared-image');
-        if (!imageBlob) {
-            throw new Error('No shared image found in storage.');
-        }
+            // Load Settings
+            function loadSettings() {
+                apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+                gasUrlInput.value = localStorage.getItem('gas_url') || '';
+                customPromptInput.value = localStorage.getItem('custom_prompt') || 'Extract text from this image';
+            }
 
-        statusText.textContent = 'Image found. Preparing to send...';
+            // Save Settings
+            settingsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+                localStorage.setItem('gas_url', gasUrlInput.value.trim());
+                localStorage.setItem('custom_prompt', customPromptInput.value.trim());
 
-        const apiKey = localStorage.getItem('gemini_api_key');
-        const gasUrl = localStorage.getItem('gas_url');
-        const prompt = localStorage.getItem('custom_prompt') || 'Extract text from this image';
+                saveStatus.classList.remove('hidden');
+                setTimeout(() => saveStatus.classList.add('hidden'), 3000);
+            });
 
-        if (!apiKey || !gasUrl) {
-            throw new Error('Missing API Key or GAS URL. Please configure settings first.');
-        }
+            // Convert Blob to Base64
+            function blobToBase64(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        // Remove "data:image/xxx;base64," prefix
+                        const base64String = reader.result.split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
 
-        const base64Image = await blobToBase64(imageBlob);
+            const resultSection = document.getElementById('result-section');
+            const resultText = document.getElementById('result-text');
+            const homeBtn = document.getElementById('home-btn');
 
-        statusText.textContent = 'Analyzing with Gemini...';
+            // Handle Shared Image
+            async function handleShare() {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (!urlParams.has('share')) return;
 
-        // Send to GAS
-        const response = await fetch(gasUrl, {
-            method: 'POST',
-            mode: 'no-cors', // Important for GAS Web App calls from browser
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                image: base64Image,
-                key: apiKey,
-                prompt: prompt,
-                mimeType: imageBlob.type
-            })
-        });
+                // Switch UI to processing mode
+                settingsSection.classList.add('hidden');
+                processingSection.classList.remove('hidden');
+                resultSection.classList.add('hidden');
 
-        // NOTE: 'no-cors' mode means we get an opaque response. We can't read the text directly.
-        // However, the user requirement is: "it will open a website... on the Android's browser with some custom url params".
-        // 
-        // PROBLEM: We cannot read the response from GAS in 'no-cors' mode to get the URL params.
-        // SOLUTION: We must use a CORS-enabled request. GAS Web Apps *do* support CORS if we return ContentService.createTextOutput().
-        // So I will remove 'no-cors' and ensure the GAS script handles CORS correctly.
+                try {
+                    const imageBlob = await get('shared-image');
+                    if (!imageBlob) {
+                        throw new Error('No shared image found in storage.');
+                    }
 
-        // Let's retry with standard CORS
-        const corsResponse = await fetch(gasUrl, {
-            method: 'POST',
-            body: JSON.stringify({
-                image: base64Image,
-                key: apiKey,
-                prompt: prompt,
-                mimeType: imageBlob.type
-            })
-        });
+                    statusText.textContent = 'Image found. Preparing to send...';
 
-        if (!corsResponse.ok) {
-            throw new Error(`Server error: ${corsResponse.status}`);
-        }
+                    const apiKey = localStorage.getItem('gemini_api_key');
+                    const gasUrl = localStorage.getItem('gas_url');
+                    const prompt = localStorage.getItem('custom_prompt') || 'extract as a csv all visible transactions in this screenshot. amounts use "," instead of "." so fix this.';
 
-        const result = await corsResponse.json();
+                    if (!apiKey || !gasUrl) {
+                        throw new Error('Missing API Key or GAS URL. Please configure settings first.');
+                    }
 
-        if (result.error) {
-            throw new Error(result.error);
-        }
+                    const base64Image = await blobToBase64(imageBlob);
 
-        statusText.textContent = 'Success! Redirecting...';
+                    statusText.textContent = 'Analyzing with Gemini...';
 
-        // Clean up
-        await del('shared-image');
+                    // Send to GAS
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            image: base64Image,
+                            key: apiKey,
+                            prompt: prompt,
+                            mimeType: imageBlob.type
+                        })
+                    });
 
-        // Redirect
-        // Assuming result.url contains the full Google URL or params
-        // The prompt says: "open a website... with some custom url params that will be received"
-        // Let's assume the GAS returns the query string or full URL.
-        if (result.redirectUrl) {
-            window.location.href = result.redirectUrl;
-        } else {
-            throw new Error('No redirect URL received from backend.');
-        }
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
 
-    } catch (err) {
-        console.error(err);
-        statusText.textContent = 'Error occurred.';
-        errorLog.textContent = err.message;
-        errorLog.classList.remove('hidden');
-        cancelBtn.classList.remove('hidden');
-    }
-}
+                    const result = await response.json();
 
-cancelBtn.addEventListener('click', () => {
-    window.location.href = './';
-});
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
 
-// Init
-loadSettings();
-handleShare();
+                    // Show Result
+                    processingSection.classList.add('hidden');
+                    resultSection.classList.remove('hidden');
+                    resultText.value = result.text;
+
+                    // Clean up
+                    await del('shared-image');
+
+                } catch (err) {
+                    console.error(err);
+                    statusText.textContent = 'Error occurred.';
+                    errorLog.textContent = err.message;
+                    errorLog.classList.remove('hidden');
+                    cancelBtn.classList.remove('hidden');
+                }
+            }
+
+            // Copy to clipboard on click
+            resultText.addEventListener('click', async () => {
+                resultText.select();
+                try {
+                    await navigator.clipboard.writeText(resultText.value);
+                    // Visual feedback
+                    const originalTitle = document.querySelector('#result-section h2').textContent;
+                    document.querySelector('#result-section h2').textContent = 'Copied!';
+                    setTimeout(() => {
+                        document.querySelector('#result-section h2').textContent = originalTitle;
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                }
+            });
+
+            homeBtn.addEventListener('click', () => {
+                window.location.href = './';
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                window.location.href = './';
+            });
+
+            // Init
+            loadSettings();
+            handleShare();
