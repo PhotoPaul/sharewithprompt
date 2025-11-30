@@ -63,80 +63,94 @@ async function handleShare() {
     try {
         const imageBlob = await get('shared-image');
         if (!imageBlob) {
-
-            statusText.textContent = 'Analyzing with Gemini...';
-
-            // Send to GAS
-            const response = await fetch(gasUrl, {
-                method: 'POST',
-                mode: 'no-cors', // Important for GAS Web App calls from browser
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    image: base64Image,
-                    key: apiKey,
-                    prompt: prompt,
-                    mimeType: imageBlob.type
-                })
-            });
-
-            // NOTE: 'no-cors' mode means we get an opaque response. We can't read the text directly.
-            // However, the user requirement is: "it will open a website... on the Android's browser with some custom url params".
-            // 
-            // PROBLEM: We cannot read the response from GAS in 'no-cors' mode to get the URL params.
-            // SOLUTION: We must use a CORS-enabled request. GAS Web Apps *do* support CORS if we return ContentService.createTextOutput().
-            // So I will remove 'no-cors' and ensure the GAS script handles CORS correctly.
-
-            // Let's retry with standard CORS
-            const corsResponse = await fetch(gasUrl, {
-                method: 'POST',
-                body: JSON.stringify({
-                    image: base64Image,
-                    key: apiKey,
-                    prompt: prompt,
-                    mimeType: imageBlob.type
-                })
-            });
-
-            if (!corsResponse.ok) {
-                throw new Error(`Server error: ${corsResponse.status}`);
-            }
-
-            const result = await corsResponse.json();
-
-            if (result.error) {
-                throw new Error(result.error);
-            }
-
-            statusText.textContent = 'Success! Redirecting...';
-
-            // Clean up
-            await del('shared-image');
-
-            // Redirect
-            // Assuming result.url contains the full Google URL or params
-            // The prompt says: "open a website... with some custom url params that will be received"
-            // Let's assume the GAS returns the query string or full URL.
-            if (result.redirectUrl) {
-                window.location.href = result.redirectUrl;
-            } else {
-                throw new Error('No redirect URL received from backend.');
-            }
-
-        } catch (err) {
-            console.error(err);
-            statusText.textContent = 'Error occurred.';
-            errorLog.textContent = err.message;
-            errorLog.classList.remove('hidden');
-            cancelBtn.classList.remove('hidden');
+            throw new Error('No shared image found in storage.');
         }
+
+        statusText.textContent = 'Image found. Preparing to send...';
+
+        const apiKey = localStorage.getItem('gemini_api_key');
+        const gasUrl = localStorage.getItem('gas_url');
+        const prompt = localStorage.getItem('custom_prompt') || 'Extract text from this image';
+
+        if (!apiKey || !gasUrl) {
+            throw new Error('Missing API Key or GAS URL. Please configure settings first.');
+        }
+
+        const base64Image = await blobToBase64(imageBlob);
+
+        statusText.textContent = 'Analyzing with Gemini...';
+
+        // Send to GAS
+        const response = await fetch(gasUrl, {
+            method: 'POST',
+            mode: 'no-cors', // Important for GAS Web App calls from browser
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image: base64Image,
+                key: apiKey,
+                prompt: prompt,
+                mimeType: imageBlob.type
+            })
+        });
+
+        // NOTE: 'no-cors' mode means we get an opaque response. We can't read the text directly.
+        // However, the user requirement is: "it will open a website... on the Android's browser with some custom url params".
+        // 
+        // PROBLEM: We cannot read the response from GAS in 'no-cors' mode to get the URL params.
+        // SOLUTION: We must use a CORS-enabled request. GAS Web Apps *do* support CORS if we return ContentService.createTextOutput().
+        // So I will remove 'no-cors' and ensure the GAS script handles CORS correctly.
+
+        // Let's retry with standard CORS
+        const corsResponse = await fetch(gasUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+                image: base64Image,
+                key: apiKey,
+                prompt: prompt,
+                mimeType: imageBlob.type
+            })
+        });
+
+        if (!corsResponse.ok) {
+            throw new Error(`Server error: ${corsResponse.status}`);
+        }
+
+        const result = await corsResponse.json();
+
+        if (result.error) {
+            throw new Error(result.error);
+        }
+
+        statusText.textContent = 'Success! Redirecting...';
+
+        // Clean up
+        await del('shared-image');
+
+        // Redirect
+        // Assuming result.url contains the full Google URL or params
+        // The prompt says: "open a website... with some custom url params that will be received"
+        // Let's assume the GAS returns the query string or full URL.
+        if (result.redirectUrl) {
+            window.location.href = result.redirectUrl;
+        } else {
+            throw new Error('No redirect URL received from backend.');
+        }
+
+    } catch (err) {
+        console.error(err);
+        statusText.textContent = 'Error occurred.';
+        errorLog.textContent = err.message;
+        errorLog.classList.remove('hidden');
+        cancelBtn.classList.remove('hidden');
     }
+}
 
 cancelBtn.addEventListener('click', () => {
-        window.location.href = './';
-    });
+    window.location.href = './';
+});
 
-    // Init
-    loadSettings();
-    handleShare();
+// Init
+loadSettings();
+handleShare();

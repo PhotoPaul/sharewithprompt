@@ -30,16 +30,30 @@
 
                     <div class="form-group">
                         <label for="gasUrl">Google Apps Script URL</label>
+                        <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/..." required>
+                        <small>Deploy the GAS code and paste the Web App URL here.</small>
+                    </div>
 
-                        <!-- Loading/Processing Section (Hidden by default) -->
-                        <section id="processing-section" class="card hidden">
-                            <div class="loader-container">
-                                <div class="spinner"></div>
-                                <p id="status-text">Processing shared image...</p>
-                            </div>
-                            <div id="error-log" class="error-box hidden"></div>
-                            <button id="cancel-btn" class="btn-secondary hidden">Cancel / Home</button>
-                        </section>
+                    <div class="form-group">
+                        <label for="customPrompt">Custom Prompt</label>
+                        <textarea id="customPrompt" rows="3"
+                            placeholder="Extract text from this image">Extract text from this image</textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Save Settings</button>
+                </form>
+                <div id="save-status" class="status-msg hidden">Settings saved!</div>
+            </section>
+
+            <!-- Loading/Processing Section (Hidden by default) -->
+            <section id="processing-section" class="card hidden">
+                <div class="loader-container">
+                    <div class="spinner"></div>
+                    <p id="status-text">Processing shared image...</p>
+                </div>
+                <div id="error-log" class="error-box hidden"></div>
+                <button id="cancel-btn" class="btn-secondary hidden">Cancel / Home</button>
+            </section>
         </main>
     </div>
 
