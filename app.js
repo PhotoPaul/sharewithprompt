@@ -14,7 +14,7 @@ const cancelBtn = document.getElementById('cancel-btn');
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js', { type: 'module' })
+    navigator.serviceWorker.register('./sw.js')
         .then(() => console.log('SW Registered'))
         .catch(err => console.error('SW Registration Failed', err));
 }
